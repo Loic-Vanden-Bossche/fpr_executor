@@ -1,53 +1,65 @@
 use std::net::TcpListener;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 use simplelog::{debug, error, info, warn};
 
-use crate::network::client_handler::handle_client;
 use crate::executors::types::ExecutorType;
+use crate::network::client_handler::handle_client;
 
-pub fn start_listening(
-    listener: TcpListener,
-    listener_active: Arc<AtomicBool>,
-    shutdown_requested: Arc<AtomicBool>,
-    child_process: Arc<Mutex<Option<std::process::Child>>>,
-    executor_type: ExecutorType,
-) {
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                debug!("New client connection incoming ...");
+pub fn start_listening(listener: TcpListener, executor_type: ExecutorType) {
+    let listener_active = Arc::new(AtomicBool::new(false));
+    let should_quit = Arc::new(AtomicBool::new(false));
 
-                if listener_active.load(Ordering::SeqCst) {
-                    warn!("Another listener is already active. Skipping incoming connection.");
-                    continue;
-                }
+    match listener.set_nonblocking(true) {
+        Ok(_) => debug!("Set non-blocking mode for listener"),
+        Err(err) => {
+            error!("Failed to set non-blocking mode for listener: {}", err);
+            return;
+        }
+    };
 
-                info!(
-                    "New client connection accepted from: {}",
-                    stream.peer_addr().unwrap()
-                );
-                debug!("Setting listener active flag to true ...");
-
-                listener_active.store(true, Ordering::SeqCst);
-
-                handle_client(
-                    stream,
-                    Arc::clone(&listener_active),
-                    Arc::clone(&shutdown_requested),
-                    Arc::clone(&child_process),
-                    executor_type,
-                );
-            }
-            Err(e) => {
-                error!("Failed to accept client connection: {}", e);
-            }
+    loop {
+        if should_quit.load(Ordering::SeqCst) {
+            break;
         }
 
-        if shutdown_requested.load(Ordering::SeqCst) {
-            info!("Shutdown requested. Closing listener.");
-            break;
+        if let Ok((stream, _)) = listener.accept() {
+            debug!("New client connection incoming ...");
+
+            if listener_active.load(Ordering::SeqCst) {
+                warn!("Another listener is already active. Skipping incoming connection.");
+                continue;
+            }
+
+            let peer_addr = match stream.peer_addr() {
+                Ok(peer_addr) => peer_addr.to_string(),
+                Err(err) => {
+                    error!("Failed to get peer address: {}", err);
+                    "Unknown".to_string()
+                }
+            };
+
+            info!("New client connection accepted from: {}", peer_addr);
+            debug!("Setting listener active flag to true ...");
+
+            listener_active.store(true, Ordering::SeqCst);
+
+            let cloned_listener_active = listener_active.clone();
+            let cloned_should_quit = should_quit.clone();
+
+            thread::spawn(move || {
+                handle_client(stream, executor_type);
+
+                info!("Closing game executor ...");
+
+                cloned_listener_active.store(false, Ordering::SeqCst);
+                cloned_should_quit.store(true, Ordering::SeqCst);
+            });
+        } else {
+            thread::sleep(Duration::from_millis(100));
         }
     }
 }

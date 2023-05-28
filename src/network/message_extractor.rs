@@ -3,7 +3,7 @@ use std::net::TcpStream;
 use std::process::ChildStdout;
 use std::thread;
 
-use simplelog::{debug, info};
+use simplelog::{debug, error, info};
 
 use crate::utils::json_validator::is_valid_json;
 
@@ -26,10 +26,21 @@ pub fn start_message_extractor(
                 if is_valid_json {
                     info!("Sending JSON to client: {}", json_buffer);
 
-                    cloned_stream
-                        .write_all(json_buffer.as_bytes())
-                        .expect("Failed to write to TCP stream");
-                    cloned_stream.flush().expect("Failed to flush TCP stream");
+                    match cloned_stream.write_all(json_buffer.as_bytes()) {
+                        Ok(_) => debug!("Message sent to client"),
+                        Err(e) => {
+                            error!("Failed to write to TCP stream: {}", e);
+                            break;
+                        }
+                    }
+
+                    match cloned_stream.flush() {
+                        Ok(_) => debug!("Flushed TCP stream"),
+                        Err(e) => {
+                            error!("Failed to flush TCP stream: {}", e);
+                            break;
+                        }
+                    }
 
                     json_buffer.clear();
                 }

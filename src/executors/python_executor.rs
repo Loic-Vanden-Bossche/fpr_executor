@@ -1,10 +1,12 @@
 use std::process::{Child, Command, Stdio};
 
 pub fn python_executor() -> Child {
-    Command::new("python")
+    match Command::new("python")
         .args(&["game.py"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to start Python script")
+        .spawn() {
+        Ok(child) => child,
+        Err(e) => panic!("Failed to start Python script: {}", e),
+    }
 }

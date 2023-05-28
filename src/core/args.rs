@@ -1,5 +1,6 @@
-use simplelog::LevelFilter;
 use clap::Parser;
+use simplelog::LevelFilter;
+
 use crate::executors::types::ExecutorType;
 
 #[derive(Parser, Debug)]
@@ -16,7 +17,7 @@ struct Args {
     pub debug: bool,
 }
 
-pub fn parse_args() -> (ExecutorType, u32, LevelFilter){
+pub fn parse_args() -> (ExecutorType, u32, LevelFilter) {
     let args = Args::parse();
     (args.exec_type, args.port, if args.debug { LevelFilter::Debug } else { LevelFilter::Info })
 }

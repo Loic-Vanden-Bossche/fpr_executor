@@ -1,9 +1,6 @@
 use std::net::TcpStream;
-use std::process::Child;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
 
-use simplelog::info;
+use simplelog::{debug, error, info};
 
 use crate::executors::executor::game_executor;
 use crate::executors::types::ExecutorType;
@@ -12,42 +9,63 @@ use crate::network::message_injector::start_message_injector;
 
 pub fn handle_client(
     stream: TcpStream,
-    listener_active: Arc<AtomicBool>,
-    shutdown_requested: Arc<AtomicBool>,
-    child_process: Arc<Mutex<Option<Child>>>,
     executor_type: ExecutorType,
 ) {
-    listener_active.store(true, Ordering::SeqCst);
+    match stream.set_nonblocking(true) {
+        Ok(_) => debug!("Set non-blocking mode for cloned client stream"),
+        Err(err) => {
+            error!("Failed to set non-blocking mode for cloned client stream: {}", err);
+            return;
+        }
+    };
 
-    let cloned_stream = stream.try_clone().expect("Failed to clone TCP stream");
+    let cloned_stream = match stream.try_clone() {
+        Ok(stream) => stream,
+        Err(_) => {
+            error!("Failed to clone TCP stream");
+            return;
+        }
+    };
 
     info!("Starting Python script ...");
     let mut child = game_executor(executor_type);
 
     info!("Python script started, listening for messages ...");
 
-    let child_stdin = child.stdin.take().expect("Failed to open stdin");
-    let child_stdout = child.stdout.take().expect("Failed to open stdout");
+    let child_stdin = match child.stdin.take() {
+        Some(stdin) => stdin,
+        None => {
+            error!("Failed to open stdin in game process");
+            return;
+        }
+    };
+    let child_stdout = match child.stdout.take() {
+        Some(stdout) => stdout,
+        None => {
+            error!("Failed to open stdout in game process");
+            return;
+        }
+    };
 
     let json_buffer = String::new();
 
     start_message_extractor(
         child_stdout,
-        cloned_stream
-            .try_clone()
-            .expect("Failed to clone TCP stream"),
+        cloned_stream,
         json_buffer.clone(),
     );
 
-    start_message_injector(stream, child_stdin, shutdown_requested);
+    start_message_injector(stream, child_stdin);
 
-    info!("Closing game executor ...");
+    match child.wait() {
+        Ok(_) => info!("Game process exited successfully"),
+        Err(status) => error!("Game process exited with error: {}", status.to_string()),
+    };
 
-    let mut child_process_guard = child_process.lock().unwrap();
-    if let Some(mut child) = child_process_guard.take() {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
+    info!("Closing game process ...");
 
-    listener_active.store(false, Ordering::SeqCst);
+    match child.kill() {
+        Ok(_) => info!("Game process closed successfully"),
+        Err(_) => info!("Game process already closed"),
+    };
 }
