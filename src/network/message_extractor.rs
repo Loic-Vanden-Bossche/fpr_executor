@@ -10,9 +10,10 @@ use crate::utils::json_validator::is_valid_json;
 pub fn start_message_extractor(
     child_stdout: ChildStdout,
     mut cloned_stream: TcpStream,
-    mut json_buffer: String,
 ) {
     thread::spawn(move || {
+        let mut json_buffer = String::new();
+
         let reader = std::io::BufReader::new(child_stdout);
 
         for line in reader.lines() {

@@ -47,13 +47,7 @@ pub fn handle_client(
         }
     };
 
-    let json_buffer = String::new();
-
-    start_message_extractor(
-        child_stdout,
-        cloned_stream,
-        json_buffer.clone(),
-    );
+    start_message_extractor(child_stdout, cloned_stream);
 
     start_message_injector(stream, child_stdin);
 
