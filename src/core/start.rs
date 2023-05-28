@@ -25,6 +25,7 @@ pub fn start_fpr_executor() {
         listener_active.clone(),
         shutdown_requested.clone(),
         child_process.clone(),
+        executor_type,
     );
 
     wait_for_shutdown(listener_active);

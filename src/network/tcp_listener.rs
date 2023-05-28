@@ -5,12 +5,14 @@ use std::sync::{Arc, Mutex};
 use simplelog::{debug, error, info, warn};
 
 use crate::network::client_handler::handle_client;
+use crate::executors::types::ExecutorType;
 
 pub fn start_listening(
     listener: TcpListener,
     listener_active: Arc<AtomicBool>,
     shutdown_requested: Arc<AtomicBool>,
     child_process: Arc<Mutex<Option<std::process::Child>>>,
+    executor_type: ExecutorType,
 ) {
     for stream in listener.incoming() {
         match stream {
@@ -35,6 +37,7 @@ pub fn start_listening(
                     Arc::clone(&listener_active),
                     Arc::clone(&shutdown_requested),
                     Arc::clone(&child_process),
+                    executor_type,
                 );
             }
             Err(e) => {

@@ -15,13 +15,14 @@ pub fn handle_client(
     listener_active: Arc<AtomicBool>,
     shutdown_requested: Arc<AtomicBool>,
     child_process: Arc<Mutex<Option<Child>>>,
+    executor_type: ExecutorType,
 ) {
     listener_active.store(true, Ordering::SeqCst);
 
     let cloned_stream = stream.try_clone().expect("Failed to clone TCP stream");
 
     info!("Starting Python script ...");
-    let mut child = game_executor(ExecutorType::Python);
+    let mut child = game_executor(executor_type);
 
     info!("Python script started, listening for messages ...");
 
