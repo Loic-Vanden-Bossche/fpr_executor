@@ -2,14 +2,14 @@ use std::net::TcpListener;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use simplelog::{debug, error, info, warn};
 
 use crate::executors::types::ExecutorType;
 use crate::network::client_handler::handle_client;
 
-pub fn start_listening(listener: TcpListener, executor_type: ExecutorType, script_path: String) {
+pub fn start_listening(listener: TcpListener, executor_type: ExecutorType, script_path: String, listener_timeout: u64) {
     let listener_active = Arc::new(AtomicBool::new(false));
     let should_quit = Arc::new(AtomicBool::new(false));
 
@@ -20,6 +20,10 @@ pub fn start_listening(listener: TcpListener, executor_type: ExecutorType, scrip
             return;
         }
     };
+
+    let start_time = Instant::now();
+
+    info!("TCP listener will timeout after {} ms if no connection is established", listener_timeout);
 
     loop {
         if should_quit.load(Ordering::SeqCst) {
@@ -49,7 +53,7 @@ pub fn start_listening(listener: TcpListener, executor_type: ExecutorType, scrip
 
             let cloned_listener_active = listener_active.clone();
             let cloned_should_quit = should_quit.clone();
-            
+
             let cloned_script_path = script_path.clone();
 
             thread::spawn(move || {
@@ -61,7 +65,17 @@ pub fn start_listening(listener: TcpListener, executor_type: ExecutorType, scrip
                 cloned_should_quit.store(true, Ordering::SeqCst);
             });
         } else {
+            if listener_active.load(Ordering::SeqCst) {
+                thread::sleep(Duration::from_millis(500));
+                continue;
+            }
+
             thread::sleep(Duration::from_millis(100));
+
+            if start_time.elapsed() >= Duration::from_millis(listener_timeout) {
+                info!("No listener found within {} ms. Closing game executor ...", listener_timeout);
+                should_quit.store(true, Ordering::SeqCst);
+            }
         }
     }
 }

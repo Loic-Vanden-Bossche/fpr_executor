@@ -1,11 +1,11 @@
 # FPR Rust executor
 
-This is a simple script executor for the FPR language written in Rust.
+This is a simple multi-language executor written in Rust for the FPR project.
 
 ## Usage dev mode
 
 ```bash
-cargo run -- --debug --exec-type python --port 8070 --script-path ./sample.py
+cargo run -- --debug --exec-type python --port 8070 --script-path ./sample.py --listener-timeout 30000
 ```
 
 ## Build images manually

@@ -8,7 +8,7 @@ use crate::network::tcp_listener::start_listening;
 use crate::utils::path_checker::check_game_script_path;
 
 pub fn start_fpr_executor() {
-    let (executor_type, port, log_level, script_path) = parse_args();
+    let (executor_type, port, log_level, script_path, listener_timeout) = parse_args();
 
     init_logs(log_level);
 
@@ -33,5 +33,5 @@ pub fn start_fpr_executor() {
 
     info!("Starting executor with type {:?} on port {}", executor_type, port);
 
-    start_listening(listener, executor_type, script_path);
+    start_listening(listener, executor_type, script_path, listener_timeout);
 }
