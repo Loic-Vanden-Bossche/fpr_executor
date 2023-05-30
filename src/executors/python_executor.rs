@@ -1,8 +1,8 @@
 use std::process::{Child, Command, Stdio};
 
-pub fn python_executor() -> Child {
+pub fn python_executor(script_path: String) -> Child {
     match Command::new("python")
-        .args(&["game.py"])
+        .args(&[script_path])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn() {

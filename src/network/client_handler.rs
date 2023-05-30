@@ -10,6 +10,7 @@ use crate::network::message_injector::start_message_injector;
 pub fn handle_client(
     stream: TcpStream,
     executor_type: ExecutorType,
+    script_path: String,
 ) {
     match stream.set_nonblocking(true) {
         Ok(_) => debug!("Set non-blocking mode for cloned client stream"),
@@ -28,7 +29,7 @@ pub fn handle_client(
     };
 
     info!("Starting Python script ...");
-    let mut child = game_executor(executor_type);
+    let mut child = game_executor(executor_type, script_path);
 
     info!("Python script started, listening for messages ...");
 

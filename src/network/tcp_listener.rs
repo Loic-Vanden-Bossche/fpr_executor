@@ -9,7 +9,7 @@ use simplelog::{debug, error, info, warn};
 use crate::executors::types::ExecutorType;
 use crate::network::client_handler::handle_client;
 
-pub fn start_listening(listener: TcpListener, executor_type: ExecutorType) {
+pub fn start_listening(listener: TcpListener, executor_type: ExecutorType, script_path: String) {
     let listener_active = Arc::new(AtomicBool::new(false));
     let should_quit = Arc::new(AtomicBool::new(false));
 
@@ -49,9 +49,11 @@ pub fn start_listening(listener: TcpListener, executor_type: ExecutorType) {
 
             let cloned_listener_active = listener_active.clone();
             let cloned_should_quit = should_quit.clone();
+            
+            let cloned_script_path = script_path.clone();
 
             thread::spawn(move || {
-                handle_client(stream, executor_type);
+                handle_client(stream, executor_type, cloned_script_path);
 
                 info!("Closing game executor ...");
 

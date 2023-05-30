@@ -15,9 +15,12 @@ struct Args {
 
     #[arg(long)]
     pub debug: bool,
+
+    #[arg(long, default_value = "sample.py")]
+    pub script_path: String,
 }
 
-pub fn parse_args() -> (ExecutorType, u32, LevelFilter) {
+pub fn parse_args() -> (ExecutorType, u32, LevelFilter, String) {
     let args = Args::parse();
-    (args.exec_type, args.port, if args.debug { LevelFilter::Debug } else { LevelFilter::Info })
+    (args.exec_type, args.port, if args.debug { LevelFilter::Debug } else { LevelFilter::Info }, args.script_path)
 }
