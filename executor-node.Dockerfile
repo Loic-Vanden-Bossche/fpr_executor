@@ -1,4 +1,4 @@
-FROM node:16.11.1-slim-bullseye as node-base
+FROM node:18 as node-base
 
 FROM fpr-executor-base:latest
 
